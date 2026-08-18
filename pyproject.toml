@@ -1,0 +1,15 @@
+# pyproject.toml
+[project]
+name = "Comfyui-MiniMax-H3-LatentSplit"
+description = "Comfyui custom nodes to split H3 AV latent"
+version = "0.0.0"
+license = { file = "LICENSE.txt" }
+dependencies  = [] 
+
+[project.urls]
+Repository = "https://github.com/bbaudio-2025/Comfyui-MiniMax-H3-LatentSplit/new/main"
+
+[tool.comfy]
+PublisherId = "bbaudio" 
+DisplayName = "Comfyui-MiniMax-H3-LatentSplit" 
+Icon = ""
