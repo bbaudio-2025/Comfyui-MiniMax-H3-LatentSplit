@@ -13,9 +13,10 @@ from .nodes import (
     MiniMaxH3CondFromBatch,
     MiniMaxH3ConcatLatents,
     MiniMaxH3LatentAppend,
+    MiniMaxH3LatentAnchor,
 )
 
-__all__ = ["MiniMaxH3LatentSplit", "MiniMaxH3LatentFromBatch", "MiniMaxH3CondFromBatch", "MiniMaxH3ConcatLatents", "MiniMaxH3LatentAppend"]
+__all__ = ["MiniMaxH3LatentSplit", "MiniMaxH3LatentFromBatch", "MiniMaxH3CondFromBatch", "MiniMaxH3ConcatLatents", "MiniMaxH3LatentAppend", "MiniMaxH3LatentAnchor"]
 
 
 class MiniMaxH3LatentSplitExtension(ComfyExtension):
@@ -26,6 +27,7 @@ class MiniMaxH3LatentSplitExtension(ComfyExtension):
             MiniMaxH3CondFromBatch,
             MiniMaxH3ConcatLatents,
             MiniMaxH3LatentAppend,
+            MiniMaxH3LatentAnchor,
         ]
 
 
