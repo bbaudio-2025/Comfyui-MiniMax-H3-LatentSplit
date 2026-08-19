@@ -2,7 +2,7 @@
 [project]
 name = "Comfyui-MiniMax-H3-LatentSplit"
 description = "Comfyui custom nodes to split H3 AV latent"
-version = "0.0.0"
+version = "0.0.1"
 license = { file = "LICENSE.txt" }
 dependencies  = [] 
 
