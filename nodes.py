@@ -720,3 +720,88 @@ class MiniMaxH3LatentAppend(io.ComfyNode):
 
         out = {"samples": comfy.nested_tensor.NestedTensor((result_v, result_a))}
         return io.NodeOutput(out)
+
+
+class MiniMaxH3LatentAnchor(io.ComfyNode):
+    """Anchor the current segment to the previous iteration's re-sampled content.
+
+    The frame-0 video keyframe (resolved_frame_index 0) of the segment's
+    conditioning is replaced by the actual re-sampled boundary frame taken from
+    `previous_result`. Keyframes are frozen rows in the H3 packed sequence, so
+    the chunk's first frame is hard-pinned to the content the previous chunk
+    ended with instead of the original (first-stage) keyframe, removing the
+    detail mismatch at the seam."""
+
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MiniMaxH3LatentAnchor",
+            display_name="Anchor MiniMax H3 Latent",
+            category="model/latent/minimax",
+            description=(
+                "Replace the current segment's frame-0 video keyframe with the "
+                "previous iteration's re-sampled boundary frame, so the chunk starts "
+                "from the same content the previous chunk ended with (keyframes are "
+                "frozen rows in the H3 packed sequence, so the seam frame is pinned). "
+                "Wire it between the segment 'conditioning' and the re-sampler, "
+                "feeding 'previous_result' from the previous iteration's 'Append "
+                "MiniMax H3 Latents' output. A no-op for index 0 or when "
+                "'previous_result' is unconnected."
+            ),
+            search_aliases=["h3 anchor", "anchor keyframe", "seam keyframe", "boundary anchor", "keyframe seam"],
+            inputs=[
+                io.Conditioning.Input("conditioning",
+                                      tooltip="Current segment's conditioning ('conditioning' output of 'Extract MiniMax H3 Latent')."),
+                io.Latent.Input("previous_result", optional=True,
+                                tooltip="Accumulated latent of the previous iteration ('Append MiniMax H3 Latents' output). Its frame at the current segment's start becomes the new frame-0 keyframe. Leave unconnected for index 0."),
+                H3_SPLIT_BATCH.Input("segments_info",
+                                     tooltip="Segment metadata ('segments_info' output of the same 'Split MiniMax H3 Latent')."),
+                io.Int.Input("index", default=0, min=0, max=100000, step=1,
+                             tooltip="Index (0-based) of the current segment."),
+                io.Float.Input("anchor_strength", default=0.999, min=0.0, max=1.0, step=0.01,
+                               tooltip="How much of the re-sampled boundary content the frozen anchor row keeps: 1.0 = exact content (hardest anchor), 0.999 = model default, lower values mix in noise and weaken the anchor, 0.0 = pure noise (no anchoring)."),
+            ],
+            outputs=[
+                io.Conditioning.Output("conditioning",
+                                       tooltip="Conditioning with the frame-0 keyframe replaced by the re-sampled boundary frame."),
+            ],
+        )
+
+    @classmethod
+    def execute(cls, conditioning, previous_result, segments_info, index=0, anchor_strength=0.999) -> io.NodeOutput:
+        if index == 0 or previous_result is None:
+            return io.NodeOutput(conditioning)
+
+        starts = segments_info.get("starts")
+        if not starts:
+            raise ValueError("MiniMaxH3LatentAnchor: segments_info is missing starts")
+        if index < 0 or index >= len(starts):
+            raise ValueError(f"index {index} out of range (split produced {len(starts)} segments)")
+
+        f0 = starts[index]
+        prev = previous_result["samples"]
+        if not is_h3_av_latent(prev):
+            raise ValueError("MiniMaxH3LatentAnchor expects previous_result to be a MiniMax H3 AV latent")
+        pv = prev.tensors[0]
+
+        t = tokens_for_frames(f0)
+        if t >= pv.shape[2]:
+            raise ValueError("previous_result does not extend to the current segment's start frame")
+        if f0 != frames_for_tokens(t):
+            raise ValueError(f"segment start {f0} is not a video-token boundary (token start {frames_for_tokens(t)})")
+
+        anchor_kf = {"resolved_frame_index": 0, "latent": pv[:, :, t:t + 1].contiguous()}
+        aug = max(0.0, min(1.0, float(anchor_strength)))
+
+        out = []
+        for tensor, d in conditioning:
+            nd = dict(d)
+            kfs = nd.get("minimax_keyframes")
+            if kfs:
+                kept = [kf for kf in kfs if kf.get("resolved_frame_index") != 0 or "latent" not in kf]
+                nd["minimax_keyframes"] = [anchor_kf] + kept
+            else:
+                nd["minimax_keyframes"] = [anchor_kf]
+            nd["minimax_visual_cond_noise_aug"] = aug
+            out.append([tensor, nd])
+        return io.NodeOutput(out)
