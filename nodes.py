@@ -29,6 +29,7 @@ except Exception:
 
 H3_COND_BATCH = io.Custom("H3_COND_BATCH")
 H3_SPLIT_BATCH = io.Custom("H3_SPLIT_BATCH")
+H3_SPATIAL_INFO = io.Custom("H3_SPATIAL_INFO")
 
 
 # ---------------------------------------------------------------------------
@@ -142,6 +143,113 @@ def is_h3_av_latent(samples):
     return (samples is not None and samples.is_nested and len(samples.tensors) == 2
             and samples.tensors[0].ndim == 5 and samples.tensors[0].shape[1] == 24
             and samples.tensors[1].ndim == 4 and samples.tensors[1].shape[1] == 32)
+
+
+# ---------------------------------------------------------------------------
+# spatial tiling helpers (experimental)
+# ---------------------------------------------------------------------------
+
+def compute_spatial_grid(h, w, th, tw, ol_h, ol_w):
+    """Tile a latent of size (h, w) with tiles (th, tw) and overlap (ol_h, ol_w).
+
+    Returns (row_offsets, col_offsets, true_row_dims, true_col_dims). The stride
+    is th - ol_h / tw - ol_w; the last row/col is clamped to the source size and
+    every tile's own true extent is clamped too. All values are in latent units."""
+    if th <= 0 or tw <= 0:
+        raise ValueError("tile dimensions must be positive")
+    if ol_h >= th or ol_w >= tw:
+        raise ValueError("overlap must be smaller than the tile size")
+    sh = th - ol_h
+    sw = tw - ol_w
+    nrows = 1 if h <= th else math.ceil((h - ol_h) / sh)
+    if (nrows - 1) * sh + th < h:
+        nrows += 1
+    ncols = 1 if w <= tw else math.ceil((w - ol_w) / sw)
+    if (ncols - 1) * sw + tw < w:
+        ncols += 1
+    rows = [i * sh for i in range(nrows)]
+    cols = [j * sw for j in range(ncols)]
+    trows = [min(th, h - r) for r in rows]
+    tcols = [min(tw, w - c) for c in cols]
+    return rows, cols, trows, tcols
+
+
+def spatial_fade_mask(th, tw, tr, tc, oh, ow, done_top, done_left, overlap_mode="earlier", fade_width=None):
+    """Per-tile video noise mask [th, tw]: 1 = re-sample freely, 0 = frozen.
+
+    Padding rows/cols (beyond the tile's true extent) are frozen. Overlap strips
+    shared with an already-processed neighbor (done_top / done_left) are frozen
+    by fade_width ALONE: 0 (default) = whole strip frozen (keeps the neighbor's
+    content), None = whole-strip fade 0->1 toward the tile interior, otherwise
+    only the first fade_width latent units fade 0->1 and the rest is free.
+
+    overlap_mode is accepted for signature compatibility but does NOT affect the
+    mask; it only selects which side wins the band when stitching (see
+    blend_weights / the append node)."""
+    mask = torch.ones(th, tw, dtype=torch.float32)
+    if tr < th:
+        mask[tr:, :] = 0.0
+    if tc < tw:
+        mask[:, tc:] = 0.0
+    if done_left and ow > 0:
+        if fade_width == 0:
+            mask[:, :ow] = 0.0
+        else:
+            fw = min(fade_width if fade_width is not None else ow, ow)
+            w = torch.linspace(0.0, 1.0, fw)
+            mask[:, :fw] = torch.minimum(mask[:, :fw], w[None, :])
+    if done_top and oh > 0:
+        if fade_width == 0:
+            mask[:oh, :] = 0.0
+        else:
+            fw = min(fade_width if fade_width is not None else oh, oh)
+            w = torch.linspace(0.0, 1.0, fw)
+            mask[:fw, :] = torch.minimum(mask[:fw, :], w[:, None])
+    return mask
+
+
+def blend_weights(t, overlap_blend, overlap_mode):
+    """Weight given to the NEW tile's content across an overlap band.
+
+    t runs 0..1 from the done-seam toward the tile interior. overlap_mode 'later'
+    hands the band to the new tile; 'earlier' to the accumulated content.
+    overlap_blend selects the transition shape: linear cross-fade, smoothstep
+    (eased), overwrite (whole band from the overlap_mode side) or midpoint (hard
+    switch in the middle)."""
+    if overlap_blend == "overwrite":
+        return torch.ones_like(t) if overlap_mode == "later" else torch.zeros_like(t)
+    if overlap_blend == "midpoint":
+        step = (t >= 0.5).to(t.dtype)
+    elif overlap_blend == "smoothstep":
+        step = t * t * (3.0 - 2.0 * t)
+    else:
+        step = t
+    if overlap_mode == "later":
+        return step
+    return 1.0 - step
+
+
+def crop_keyframes_to_tile(cond, src_h, src_w, r0, c0, tr, tc):
+    """Spatially crop every keyframe's video latent to a tile of the source frame.
+
+    Keyframes whose latent already matches the source spatial size are cropped to
+    the tile's latent region; others are passed through unchanged. Audio
+    keyframes are untouched (audio is not spatial)."""
+    out = []
+    for tensor, d in cond:
+        nd = dict(d)
+        kfs = nd.get("minimax_keyframes")
+        if kfs:
+            cropped = []
+            for kf in kfs:
+                nkf = dict(kf)
+                lt = kf.get("latent")
+                if (lt is not None and lt.shape[3] == src_h and lt.shape[4] == src_w):
+                    nkf["latent"] = lt[:, :, :, r0:r0 + tr, c0:c0 + tc].contiguous()
+                cropped.append(nkf)
+            nd["minimax_keyframes"] = cropped
+        out.append([tensor, nd])
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -768,7 +876,7 @@ class MiniMaxH3LatentAnchor(io.ComfyNode):
         )
 
     @classmethod
-    def execute(cls, conditioning, previous_result, segments_info, index=0, anchor_strength=0.999) -> io.NodeOutput:
+    def execute(cls, conditioning, previous_result=None, segments_info=None, index=0, anchor_strength=0.999) -> io.NodeOutput:
         if index == 0 or previous_result is None:
             return io.NodeOutput(conditioning)
 
@@ -804,4 +912,366 @@ class MiniMaxH3LatentAnchor(io.ComfyNode):
                 nd["minimax_keyframes"] = [anchor_kf]
             nd["minimax_visual_cond_noise_aug"] = aug
             out.append([tensor, nd])
+        return io.NodeOutput(out)
+
+
+class MiniMaxH3SpatialSplit(io.ComfyNode):
+    """EXPERIMENTAL. Split a MiniMax H3 AV latent into a spatial tile grid.
+
+    Each tile keeps the FULL temporal length and is a spatial crop of the source
+    (latent-space, so it is a valid standalone video for re-sampling). Tiles are
+    zero-padded to a uniform size; the padded border is frozen via the tile's
+    noise_mask. Overlap strips shared with the neighbor that is processed FIRST
+    (row-major order: left/top neighbors) fade the mask from frozen at the seam
+    to free at the tile interior, so the second tile keeps the first tile's
+    re-sampled content at the seam. Audio is carried unchanged in every tile and
+    frozen (mask 0) so spatial tiling never re-samples audio."""
+
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MiniMaxH3SpatialSplit",
+            display_name="Split MiniMax H3 Latent (Spatial)",
+            category="model/latent/minimax",
+            description=(
+                "EXPERIMENTAL. Split a denoised MiniMax H3 AV latent into a 2D grid of "
+                "spatially-cropped tiles (each tile keeps the full temporal length) so "
+                "each tile can be re-sampled separately and stitched back, bounding "
+                "peak VRAM by one tile. Process tiles row-major with 'Extract MiniMax "
+                "H3 Spatial Tile' + 'Append MiniMax H3 Spatial Tile'. The tile noise "
+                "mask fades overlap strips that are shared with the already-processed "
+                "left/top neighbor (frozen at the seam, free toward the interior), so "
+                "seams keep the earlier neighbor's re-sampled content. Audio is frozen "
+                "in every tile (never re-sampled)."
+            ),
+            search_aliases=["h3 spatial split", "spatial split", "tile latent", "h3 tile"],
+            inputs=[
+                io.Latent.Input("latent", tooltip="Denoised MiniMax H3 AV latent to tile."),
+                io.Conditioning.Input("conditioning", optional=True,
+                                      tooltip="Conditioning used to generate this latent. Its minimax_keyframes are spatially cropped per tile."),
+                io.Int.Input("tile_width", default=512, min=32, max=100000, step=32,
+                             tooltip="Tile width in PIXELS. Must be a multiple of 32."),
+                io.Int.Input("tile_height", default=512, min=32, max=100000, step=32,
+                             tooltip="Tile height in PIXELS. Must be a multiple of 32."),
+                io.Int.Input("overlap", default=64, min=0, max=100000, step=32,
+                             tooltip="Overlap in PIXELS between neighbouring tiles (both axes). Must be a multiple of 32 and smaller than the tile size. 32-96 px recommended; the shared strip fades in the mask."),
+                io.Int.Input("fade_width", default=0, min=0, max=100000, step=32,
+                             tooltip="Width in PIXELS of the mask fade from the frozen seam toward the free interior (applies to each shared overlap strip, in both earlier and later modes). 0 (default) freezes the whole overlap strip with no fade - a hard test of the noise_mask freeze. Set to 'overlap' to restore the whole-strip fade."),
+                io.Combo.Input("overlap_mode", options=["earlier", "later"], default="earlier",
+                               tooltip="How tiles are stitched together (the append node follows this via 'auto'). 'earlier' (default): the already-stitched content wins each shared overlap band. 'later': the re-sampled tile wins. This does NOT affect the noise mask - the freeze/fade of each strip is controlled by fade_width alone."),
+            ],
+            outputs=[
+                io.Latent.Output("tiles", tooltip="Tile batch (N, 24, T, th, tw) with a noise_mask: padding and done-neighbor overlap strips are frozen."),
+                H3_COND_BATCH.Output("cond_batch", tooltip="Per-tile conditioning with spatially-cropped keyframes. None unless 'conditioning' was connected."),
+                H3_SPATIAL_INFO.Output("tiles_info", tooltip="Tile grid metadata consumed by the spatial extract/append nodes."),
+                io.Int.Output("grid_rows", tooltip="Number of tile rows."),
+                io.Int.Output("grid_cols", tooltip="Number of tile columns."),
+            ],
+        )
+
+    @classmethod
+    def validate_inputs(cls, **kwargs) -> bool | str:
+        for name in ("tile_width", "tile_height", "overlap"):
+            v = kwargs.get(name)
+            if isinstance(v, int) and v % 32 != 0:
+                return (f"'{name}' must be a multiple of 32 pixels (the model's 2x2 "
+                        f"latent patch grid); got {v}.")
+        tw = kwargs.get("tile_width")
+        th = kwargs.get("tile_height")
+        ov = kwargs.get("overlap")
+        fw = kwargs.get("fade_width")
+        if isinstance(tw, int) and isinstance(th, int) and isinstance(ov, int):
+            if ov >= tw or ov >= th:
+                return "overlap must be smaller than both tile dimensions."
+        if isinstance(fw, int) and isinstance(ov, int) and fw > ov:
+            return "fade_width must not exceed overlap."
+        return True
+
+    @classmethod
+    def execute(cls, latent, tile_width, tile_height, overlap, overlap_mode="earlier", conditioning=None, fade_width=0) -> io.NodeOutput:
+        if tile_width % 32 != 0 or tile_height % 32 != 0 or overlap % 32 != 0:
+            raise ValueError("tile_width, tile_height and overlap must be multiples of 32 pixels")
+        if overlap >= tile_width or overlap >= tile_height:
+            raise ValueError("overlap must be smaller than both tile dimensions")
+        if fade_width < 0 or fade_width > overlap:
+            raise ValueError("fade_width must be between 0 and overlap")
+
+        samples = latent["samples"]
+        if not is_h3_av_latent(samples):
+            raise ValueError("MiniMaxH3SpatialSplit expects a MiniMax H3 AV latent")
+        video = samples.tensors[0]
+        audio = samples.tensors[1]
+        if video.shape[0] != 1:
+            raise ValueError("MiniMaxH3SpatialSplit expects a single-video latent (batch 1)")
+        _, c, t, h, w = video.shape
+        ta = audio.shape[-1]
+
+        th = tile_height // 16
+        tw = tile_width // 16
+        ol = overlap // 16
+        fw = fade_width // 16
+        rows, cols, trows, tcols = compute_spatial_grid(h, w, th, tw, ol, ol)
+        nrows, ncols = len(rows), len(cols)
+        n = nrows * ncols
+
+        batch_v = torch.zeros((n, c, t, th, tw), device=video.device, dtype=video.dtype)
+        batch_a = torch.zeros((n, 32, 2, ta), device=audio.device, dtype=audio.dtype)
+        mask_v = torch.zeros((n, c, t, th, tw), device=video.device, dtype=video.dtype)
+        mask_a = torch.zeros((n, 32, 2, ta), device=audio.device, dtype=audio.dtype)
+
+        for i in range(nrows):
+            for j in range(ncols):
+                k = i * ncols + j
+                tr = trows[i]
+                tc = tcols[j]
+                batch_v[k, :, :, :tr, :tc] = video[0, :, :, rows[i]:rows[i] + tr, cols[j]:cols[j] + tc]
+                batch_a[k] = audio[0]
+                m = spatial_fade_mask(th, tw, tr, tc, min(ol, tr), min(ol, tc),
+                                      done_top=(i > 0), done_left=(j > 0), overlap_mode=overlap_mode,
+                                      fade_width=fw)
+                mask_v[k] = m[None, None, None]
+
+        out_latent = {
+            "samples": comfy.nested_tensor.NestedTensor((batch_v, batch_a)),
+            "noise_mask": comfy.nested_tensor.NestedTensor((mask_v, mask_a)),
+        }
+
+        conds = None
+        if conditioning is not None:
+            conds = [crop_keyframes_to_tile(conditioning, h, w, rows[i], cols[j], trows[i], tcols[j])
+                     for i in range(nrows) for j in range(ncols)]
+
+        tiles_info = {
+            "rows": rows,
+            "cols": cols,
+            "tile_h": th,
+            "tile_w": tw,
+            "overlap": ol,
+            "tile_rows": trows,
+            "tile_cols": tcols,
+            "n_cols": ncols,
+            "orig_h": h,
+            "orig_w": w,
+            "overlap_mode": overlap_mode,
+        }
+        return io.NodeOutput(out_latent, conds, tiles_info, nrows, ncols)
+
+
+class MiniMaxH3SpatialExtract(io.ComfyNode):
+    """EXPERIMENTAL. Pull one spatial tile out of a Split MiniMax H3 Latent
+    (Spatial) batch and trim it to its true extent. Returns the tile latent
+    together with its noise_mask (frozen padding + done-overlap fades), so a
+    re-sampler keeps the shared seams. When `accumulated` (the running result of
+    the spatial append loop) is connected, the overlap strips shared with the
+    already-processed left/top neighbor are pre-filled with the neighbor's
+    re-sampled content, which the frozen mask then keeps."""
+
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MiniMaxH3SpatialExtract",
+            display_name="Extract MiniMax H3 Spatial Tile",
+            category="model/latent/minimax",
+            description=(
+                "EXPERIMENTAL. Pull one tile out of a 'Split MiniMax H3 Latent "
+                "(Spatial)' batch, trimmed to its true extent, together with its "
+                "noise_mask (padding and done-overlap strips are frozen). Optionally "
+                "pre-fill the done-overlap strips from the running result of the "
+                "'Append MiniMax H3 Spatial Tile' loop so the re-sampler keeps the "
+                "neighbor's completed content at the seam."
+            ),
+            search_aliases=["h3 spatial extract", "spatial tile extract", "extract tile"],
+            inputs=[
+                io.Latent.Input("tiles", tooltip="Tile batch produced by 'Split MiniMax H3 Latent (Spatial)'."),
+                H3_COND_BATCH.Input("cond_batch", optional=True,
+                                    tooltip="cond_batch output of the same split. The selected tile's conditioning is returned on the 'conditioning' output."),
+                H3_SPATIAL_INFO.Input("tiles_info", tooltip="tiles_info output of the same split."),
+                io.Int.Input("index", default=0, min=0, max=100000,
+                             tooltip="Tile index (0-based, row-major). Negative counts from the end."),
+                io.Latent.Input("accumulated", optional=True,
+                                tooltip="Running result of the 'Append MiniMax H3 Spatial Tile' loop (previous iterations). Its content in the done-overlap strips is copied into the tile before re-sampling. Leave unconnected for the first tile / to freeze strips to the original content."),
+            ],
+            outputs=[
+                io.Latent.Output("latent", tooltip="The tile, trimmed to its true extent, with a noise_mask attached."),
+                io.Conditioning.Output("conditioning", display_name="conditioning",
+                                       tooltip="Conditioning of the selected tile (spatially-cropped keyframes)."),
+            ],
+        )
+
+    @classmethod
+    def execute(cls, tiles, cond_batch=None, tiles_info=None, index=0, accumulated=None) -> io.NodeOutput:
+        ncols = tiles_info["n_cols"]
+        n = len(tiles_info["rows"]) * ncols
+        if index < 0:
+            index += n
+        if index < 0 or index >= n:
+            raise ValueError("index {} out of range for {} tiles".format(index, n))
+        i = index // ncols
+        j = index % ncols
+
+        samples = tiles["samples"]
+        if not is_h3_av_latent(samples):
+            raise ValueError("MiniMaxH3SpatialExtract expects a MiniMax H3 AV latent batch")
+        video = samples.tensors[0]
+        audio = samples.tensors[1]
+        mask = tiles.get("noise_mask")
+
+        tr = tiles_info["tile_rows"][i]
+        tc = tiles_info["tile_cols"][j]
+        v = video[index:index + 1, :, :, :tr, :tc].contiguous()
+        a = audio[index:index + 1].contiguous()
+
+        if accumulated is not None:
+            acc = accumulated["samples"]
+            if not is_h3_av_latent(acc):
+                raise ValueError("MiniMaxH3SpatialExtract expects accumulated to be a MiniMax H3 AV latent")
+            acc_v = acc.tensors[0]
+            r0 = tiles_info["rows"][i]
+            c0 = tiles_info["cols"][j]
+            ov = min(tiles_info["overlap"], tr, tc)
+            if j > 0 and ov > 0:
+                v[:, :, :, :, :ov] = acc_v[:, :, :, r0:r0 + tr, c0:c0 + ov]
+            if i > 0 and ov > 0:
+                v[:, :, :, :ov, :] = acc_v[:, :, :, r0:r0 + ov, c0:c0 + tc]
+
+        out = {"samples": comfy.nested_tensor.NestedTensor((v, a))}
+        if mask is not None and mask.is_nested and len(mask.tensors) == 2:
+            mv = mask.tensors[0][index:index + 1, :, :, :tr, :tc].contiguous()
+            ma = mask.tensors[1][index:index + 1].contiguous()
+            out["noise_mask"] = comfy.nested_tensor.NestedTensor((mv, ma))
+
+        conditioning = None
+        if cond_batch is not None:
+            conditioning = cond_batch[index]
+        return io.NodeOutput(out, conditioning)
+
+
+class MiniMaxH3SpatialAppend(io.ComfyNode):
+    """EXPERIMENTAL. Stitch one re-sampled spatial tile into the accumulated
+    latent (the running result of the spatial loop). The tile is placed at its
+    grid position; overlap bands shared with the previous row/column tile are
+    cross-faded against what is already there. Audio is carried from the base
+    unchanged (spatial tiling never re-samples audio)."""
+
+    @classmethod
+    def define_schema(cls):
+        return io.Schema(
+            node_id="MiniMaxH3SpatialAppend",
+            display_name="Append MiniMax H3 Spatial Tile",
+            category="model/latent/minimax",
+            description=(
+                "EXPERIMENTAL. Stitch one re-sampled spatial tile into the running "
+                "result of the spatial loop. The tile is written at its grid position "
+                "and the overlap bands shared with the previous row/column tile are "
+                "cross-faded against the existing content. Wire 'source' to the "
+                "original latent and 'accumulated' to this node's previous output "
+                "(None on the first iteration); after the last tile the output is the "
+                "full re-sampled latent."
+            ),
+            search_aliases=["h3 spatial append", "spatial tile append", "splice tile"],
+            inputs=[
+                io.Latent.Input("segment_add", tooltip="The re-sampled tile (output of the re-sampler; 'Extract MiniMax H3 Spatial Tile' for the first iteration / after carry)."),
+                io.Latent.Input("source", tooltip="The original full latent (the input to the spatial split)."),
+                io.Latent.Input("accumulated", optional=True,
+                                tooltip="Previous output of this node (None on the first iteration)."),
+                io.Int.Input("index", default=0, min=0, max=100000,
+                             tooltip="Tile index (0-based, row-major) of segment_add."),
+                H3_SPATIAL_INFO.Input("tiles_info", tooltip="tiles_info output of the same split."),
+                io.Combo.Input("overlap_mode", options=["auto", "earlier", "later"], default="auto",
+                               tooltip="Who wins each shared overlap band when stitching. 'auto' (default) uses the split's overlap_mode. 'earlier': the accumulated (already stitched) content dominates the band. 'later': the re-sampled tile dominates."),
+                io.Combo.Input("overlap_blend", options=["linear", "smoothstep", "overwrite", "midpoint"], default="linear",
+                               tooltip="How the overlap band transitions. 'linear': straight cross-fade (default). 'smoothstep': eased fade, zero slope at both ends. 'overwrite': the overlap_mode side takes the whole band verbatim. 'midpoint': hard switch at the band's middle."),
+            ],
+            outputs=[
+                io.Latent.Output("latent", tooltip="Accumulated latent with the tile stitched in. After the last tile this is the full result."),
+            ],
+        )
+
+    @classmethod
+    def execute(cls, segment_add, source, accumulated=None, index=0, tiles_info=None,
+                overlap_mode="auto", overlap_blend="linear") -> io.NodeOutput:
+        ncols = tiles_info["n_cols"]
+        n = len(tiles_info["rows"]) * ncols
+        if index < 0:
+            index += n
+        if index < 0 or index >= n:
+            raise ValueError("index {} out of range for {} tiles".format(index, n))
+        i = index // ncols
+        j = index % ncols
+        if overlap_mode == "auto":
+            overlap_mode = tiles_info.get("overlap_mode", "earlier")
+        if overlap_mode not in ("earlier", "later"):
+            raise ValueError("overlap_mode must be 'earlier' or 'later' (got {!r})".format(overlap_mode))
+        if overlap_blend not in ("linear", "smoothstep", "overwrite", "midpoint"):
+            raise ValueError("overlap_blend must be one of linear/smoothstep/overwrite/midpoint (got {!r})".format(overlap_blend))
+
+        add = segment_add["samples"]
+        if not is_h3_av_latent(add):
+            raise ValueError("MiniMaxH3SpatialAppend expects segment_add to be a MiniMax H3 AV latent")
+        av = add.tensors[0]
+        aa = add.tensors[1]
+        if av.shape[0] != 1:
+            raise ValueError("MiniMaxH3SpatialAppend expects batch-1 tiles")
+
+        src = source["samples"]
+        if not is_h3_av_latent(src):
+            raise ValueError("MiniMaxH3SpatialAppend expects source to be a MiniMax H3 AV latent")
+        src_v = src.tensors[0]
+        if src_v.shape[0] != 1:
+            raise ValueError("MiniMaxH3SpatialAppend expects a single-video source")
+
+        base = accumulated["samples"] if accumulated is not None else src
+        if not is_h3_av_latent(base):
+            raise ValueError("MiniMaxH3SpatialAppend expects accumulated to be a MiniMax H3 AV latent")
+        base_v = base.tensors[0]
+        if base_v.shape[0] != 1:
+            raise ValueError("MiniMaxH3SpatialAppend expects a single-video base latent")
+        result_v = base_v.clone()
+        result_a = base.tensors[1].clone()
+
+        if tiles_info["orig_h"] != result_v.shape[3] or tiles_info["orig_w"] != result_v.shape[4]:
+            raise ValueError(
+                f"base latent is {result_v.shape[3]}x{result_v.shape[4]} but the spatial split was made "
+                f"for {tiles_info['orig_h']}x{tiles_info['orig_w']}. 'source' must be the ORIGINAL full "
+                f"latent you passed to the split (the upscaled one, here {tiles_info['orig_w'] * 16}x"
+                f"{tiles_info['orig_h'] * 16}px) and 'accumulated' the previous output of this node - "
+                f"not the original small latent, an extracted tile, or the split's 'tiles' batch."
+            )
+
+        r0 = tiles_info["rows"][i]
+        c0 = tiles_info["cols"][j]
+        tr = min(tiles_info["tile_rows"][i], av.shape[3])
+        tc = min(tiles_info["tile_cols"][j], av.shape[4])
+        ov = min(tiles_info["overlap"], tr, tc)
+        if r0 + tr > result_v.shape[3] or c0 + tc > result_v.shape[4]:
+            raise ValueError(
+                f"tile {index} ({r0}x{c0} grid position, {tr}x{tc} true extent) does not fit inside the "
+                f"accumulated latent ({result_v.shape[3]}x{result_v.shape[4]}). Check the wiring: 'source' "
+                f"must be the ORIGINAL full latent (the split input), and 'accumulated' the previous output "
+                f"of this node - full size, not a tile. Passing an extracted tile or the split's 'tiles' "
+                f"batch here makes the base latent tile-sized and the later tiles no longer fit."
+            )
+
+        region = result_v[:, :, :, r0:r0 + tr, c0:c0 + tc].clone()
+        tile_v = av[:, :, :, :tr, :tc]
+
+        if j > 0 and ov > 0:
+            t = torch.linspace(0.0, 1.0, ov, device=result_v.device, dtype=result_v.dtype)
+            w = blend_weights(t, overlap_blend, overlap_mode)
+            region[:, :, :, :, :ov] = region[:, :, :, :, :ov] * (1.0 - w[None, None, None, None, :]) + tile_v[:, :, :, :, :ov] * w[None, None, None, None, :]
+        if i > 0 and ov > 0:
+            t = torch.linspace(0.0, 1.0, ov, device=result_v.device, dtype=result_v.dtype)
+            w = blend_weights(t, overlap_blend, overlap_mode)
+            region[:, :, :, :ov, :] = region[:, :, :, :ov, :] * (1.0 - w[None, None, None, :, None]) + tile_v[:, :, :, :ov, :] * w[None, None, None, :, None]
+
+        band = torch.zeros(1, 1, 1, tr, tc, device=result_v.device, dtype=torch.bool)
+        if ov > 0:
+            if j > 0:
+                band[:, :, :, :, :ov] = True
+            if i > 0:
+                band[:, :, :, :ov, :] = True
+        region = torch.where(band, region, tile_v)
+        result_v[:, :, :, r0:r0 + tr, c0:c0 + tc] = region
+
+        out = {"samples": comfy.nested_tensor.NestedTensor((result_v, result_a))}
         return io.NodeOutput(out)
