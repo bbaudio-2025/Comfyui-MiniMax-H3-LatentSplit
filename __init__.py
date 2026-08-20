@@ -14,9 +14,12 @@ from .nodes import (
     MiniMaxH3ConcatLatents,
     MiniMaxH3LatentAppend,
     MiniMaxH3LatentAnchor,
+    MiniMaxH3SpatialSplit,
+    MiniMaxH3SpatialExtract,
+    MiniMaxH3SpatialAppend,
 )
 
-__all__ = ["MiniMaxH3LatentSplit", "MiniMaxH3LatentFromBatch", "MiniMaxH3CondFromBatch", "MiniMaxH3ConcatLatents", "MiniMaxH3LatentAppend", "MiniMaxH3LatentAnchor"]
+__all__ = ["MiniMaxH3LatentSplit", "MiniMaxH3LatentFromBatch", "MiniMaxH3CondFromBatch", "MiniMaxH3ConcatLatents", "MiniMaxH3LatentAppend", "MiniMaxH3LatentAnchor", "MiniMaxH3SpatialSplit", "MiniMaxH3SpatialExtract", "MiniMaxH3SpatialAppend"]
 
 
 class MiniMaxH3LatentSplitExtension(ComfyExtension):
@@ -28,6 +31,9 @@ class MiniMaxH3LatentSplitExtension(ComfyExtension):
             MiniMaxH3ConcatLatents,
             MiniMaxH3LatentAppend,
             MiniMaxH3LatentAnchor,
+            MiniMaxH3SpatialSplit,
+            MiniMaxH3SpatialExtract,
+            MiniMaxH3SpatialAppend,
         ]
 
 
