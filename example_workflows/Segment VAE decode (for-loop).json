@@ -1,0 +1,1394 @@
+{
+  "id": "c2afa9f3-3eed-4754-bbe3-a137b9a4c04f",
+  "revision": 0,
+  "last_node_id": 31,
+  "last_link_id": 46,
+  "nodes": [
+    {
+      "id": 1,
+      "type": "easy forLoopStart",
+      "pos": [
+        -480,
+        4810
+      ],
+      "size": [
+        210,
+        120
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "initial_value1",
+          "shape": 7,
+          "type": "*",
+          "link": 39
+        },
+        {
+          "name": "total",
+          "type": "INT",
+          "widget": {
+            "name": "total"
+          },
+          "link": 17
+        },
+        {
+          "name": "initial_value2",
+          "type": "*",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "flow",
+          "shape": 5,
+          "type": "FLOW_CONTROL",
+          "links": [
+            24
+          ]
+        },
+        {
+          "name": "index",
+          "type": "INT",
+          "links": [
+            18
+          ]
+        },
+        {
+          "name": "value1",
+          "type": "*",
+          "links": [
+            2
+          ]
+        },
+        {
+          "name": "value2",
+          "type": "*",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-easy-use",
+        "ver": "595e0738a9e3f8d0d9c4d875461b2d2c9e7559c7",
+        "Node name for S&R": "easy forLoopStart"
+      },
+      "widgets_values": [
+        2
+      ],
+      "widgets_values_named": {
+        "total": 2
+      },
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 27,
+      "type": "ComfyMathExpression",
+      "pos": [
+        -1140,
+        5040
+      ],
+      "size": [
+        210,
+        130
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "values.a",
+          "type": "FLOAT,INT,BOOLEAN",
+          "link": 37
+        },
+        {
+          "name": "values.b",
+          "shape": 7,
+          "type": "FLOAT,INT,BOOLEAN",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "FLOAT",
+          "type": "FLOAT",
+          "links": null
+        },
+        {
+          "name": "INT",
+          "type": "INT",
+          "links": [
+            38
+          ]
+        },
+        {
+          "name": "BOOL",
+          "type": "BOOLEAN",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.35.0",
+        "Node name for S&R": "ComfyMathExpression"
+      },
+      "widgets_values": [
+        "a * 16"
+      ],
+      "widgets_values_named": {
+        "expression": "a * 16"
+      }
+    },
+    {
+      "id": 26,
+      "type": "ComfyMathExpression",
+      "pos": [
+        -1140,
+        5230
+      ],
+      "size": [
+        210,
+        130
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "values.a",
+          "type": "FLOAT,INT,BOOLEAN",
+          "link": 35
+        },
+        {
+          "name": "values.b",
+          "shape": 7,
+          "type": "FLOAT,INT,BOOLEAN",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "FLOAT",
+          "type": "FLOAT",
+          "links": null
+        },
+        {
+          "name": "INT",
+          "type": "INT",
+          "links": [
+            36
+          ]
+        },
+        {
+          "name": "BOOL",
+          "type": "BOOLEAN",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.35.0",
+        "Node name for S&R": "ComfyMathExpression"
+      },
+      "widgets_values": [
+        "a * 16"
+      ],
+      "widgets_values_named": {
+        "expression": "a * 16"
+      }
+    },
+    {
+      "id": 24,
+      "type": "EmptyImage",
+      "pos": [
+        -900,
+        5040
+      ],
+      "size": [
+        210,
+        130
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "width",
+          "type": "INT",
+          "widget": {
+            "name": "width"
+          },
+          "link": 38
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "widget": {
+            "name": "height"
+          },
+          "link": 36
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            32
+          ]
+        }
+      ],
+      "title": "Dummy Frame",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.30.0",
+        "Node name for S&R": "EmptyImage"
+      },
+      "widgets_values": [
+        128,
+        192,
+        1,
+        0
+      ],
+      "widgets_values_named": {
+        "width": 128,
+        "height": 192,
+        "batch_size": 1,
+        "color": 0
+      }
+    },
+    {
+      "id": 23,
+      "type": "CreateVideo",
+      "pos": [
+        -660,
+        5040
+      ],
+      "size": [
+        210,
+        150
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 32
+        },
+        {
+          "name": "audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            39
+          ]
+        }
+      ],
+      "title": "Dummy Initial Video",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.30.0",
+        "Node name for S&R": "CreateVideo"
+      },
+      "widgets_values": [
+        24,
+        8,
+        "sRGB",
+        "none"
+      ],
+      "widgets_values_named": {
+        "fps": 24,
+        "bit_depth": 8,
+        "color_space": "sRGB",
+        "codec": "none"
+      }
+    },
+    {
+      "id": 16,
+      "type": "MiniMaxH3LatentFromBatch",
+      "pos": [
+        -200,
+        4720
+      ],
+      "size": [
+        250,
+        120
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "latents",
+          "type": "LATENT",
+          "link": 11
+        },
+        {
+          "name": "cond_batch",
+          "type": "H3_COND_BATCH",
+          "link": 12
+        },
+        {
+          "name": "segments",
+          "type": "H3_SPLIT_BATCH",
+          "link": 13
+        },
+        {
+          "name": "index",
+          "type": "INT",
+          "widget": {
+            "name": "index"
+          },
+          "link": 18
+        }
+      ],
+      "outputs": [
+        {
+          "name": "latent",
+          "type": "LATENT",
+          "links": [
+            19
+          ]
+        },
+        {
+          "name": "conditioning",
+          "type": "CONDITIONING",
+          "links": []
+        },
+        {
+          "name": "frame_start",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "name": "frame_count",
+          "type": "INT",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MiniMaxH3LatentFromBatch"
+      },
+      "widgets_values": [
+        0
+      ],
+      "widgets_values_named": {
+        "index": 0
+      }
+    },
+    {
+      "id": 4,
+      "type": "VideoConcat",
+      "pos": [
+        400,
+        4960
+      ],
+      "size": [
+        280,
+        130
+      ],
+      "flags": {},
+      "order": 19,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "source_video",
+          "type": "VIDEO",
+          "link": 2
+        },
+        {
+          "name": "extend_video",
+          "type": "VIDEO",
+          "link": 3
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": [
+            25
+          ]
+        }
+      ],
+      "title": "merge with previous segment",
+      "properties": {
+        "cnr_id": "ComfyUI-FFmpeg-Video",
+        "ver": "e6f1f1186a55fc50029f1828c6a3e54b497d9b16",
+        "Node name for S&R": "VideoConcat",
+        "aux_id": "bbaudio-2025/ComfyUI-FFmpeg-Video"
+      },
+      "widgets_values": [
+        0,
+        "linear_crossfade",
+        "source_video"
+      ],
+      "widgets_values_named": {
+        "overlap": 0,
+        "overlap_type": "linear_crossfade",
+        "audio_sample_rate": "source_video"
+      }
+    },
+    {
+      "id": 25,
+      "type": "GetLatentSizeAndCount",
+      "pos": [
+        -1150,
+        4730
+      ],
+      "size": [
+        200,
+        130
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "latent",
+          "type": "LATENT",
+          "link": 33
+        }
+      ],
+      "outputs": [
+        {
+          "name": "latent",
+          "type": "LATENT",
+          "links": [
+            34
+          ]
+        },
+        {
+          "label": "1 batch",
+          "name": "batch_size",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "label": "24 channels",
+          "name": "channels",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "label": "62 frames",
+          "name": "frames",
+          "type": "INT",
+          "links": null
+        },
+        {
+          "label": "36 height",
+          "name": "height",
+          "type": "INT",
+          "links": [
+            35
+          ]
+        },
+        {
+          "label": "64 width",
+          "name": "width",
+          "type": "INT",
+          "links": [
+            37
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-kjnodes",
+        "ver": "e8e88f7c88e3f6205b122f5de87e69a09fbce5ac",
+        "Node name for S&R": "GetLatentSizeAndCount"
+      }
+    },
+    {
+      "id": 28,
+      "type": "Note",
+      "pos": [
+        -910,
+        4570
+      ],
+      "size": [
+        230,
+        90
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "Set appropriate value for 'chunk_length' base on the video resolution, your RAM and VRAM."
+      ],
+      "widgets_values_named": {
+        "text": "Set appropriate value for 'chunk_length' base on the video resolution, your RAM and VRAM."
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 21,
+      "type": "SaveVideo",
+      "pos": [
+        1280,
+        4800
+      ],
+      "size": [
+        270,
+        503
+      ],
+      "flags": {},
+      "order": 22,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 44
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": null
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.35.0",
+        "Node name for S&R": "SaveVideo"
+      },
+      "widgets_values": [
+        "video/ComfyUI",
+        "auto",
+        "auto",
+        "auto"
+      ],
+      "widgets_values_named": {
+        "filename_prefix": "video/ComfyUI",
+        "format": "auto",
+        "format.codec": "auto",
+        "codec": "auto"
+      }
+    },
+    {
+      "id": 20,
+      "type": "easy forLoopEnd",
+      "pos": [
+        730,
+        4800
+      ],
+      "size": [
+        160,
+        90
+      ],
+      "flags": {},
+      "order": 20,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "flow",
+          "shape": 5,
+          "type": "FLOW_CONTROL",
+          "link": 24
+        },
+        {
+          "name": "initial_value1",
+          "shape": 7,
+          "type": "*",
+          "link": 25
+        }
+      ],
+      "outputs": [
+        {
+          "name": "value1",
+          "type": "*",
+          "links": [
+            43
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-easy-use",
+        "ver": "595e0738a9e3f8d0d9c4d875461b2d2c9e7559c7",
+        "Node name for S&R": "easy forLoopEnd"
+      },
+      "color": "#223",
+      "bgcolor": "#335"
+    },
+    {
+      "id": 30,
+      "type": "VideoAddAudio",
+      "pos": [
+        940,
+        4800
+      ],
+      "size": [
+        250,
+        110
+      ],
+      "flags": {},
+      "order": 21,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "link": 43
+        },
+        {
+          "name": "audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": 45
+        }
+      ],
+      "outputs": [
+        {
+          "name": "video",
+          "type": "VIDEO",
+          "links": [
+            44
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "ComfyUI-FFmpeg-Video",
+        "ver": "e6f1f1186a55fc50029f1828c6a3e54b497d9b16",
+        "Node name for S&R": "VideoAddAudio",
+        "aux_id": "bbaudio-2025/ComfyUI-FFmpeg-Video"
+      },
+      "widgets_values": [
+        "start",
+        ""
+      ],
+      "widgets_values_named": {
+        "align": "start",
+        "audio_file": ""
+      }
+    },
+    {
+      "id": 3,
+      "type": "CreateVideo",
+      "pos": [
+        400,
+        4740
+      ],
+      "size": [
+        230,
+        150
+      ],
+      "flags": {},
+      "order": 18,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 21
+        },
+        {
+          "name": "audio",
+          "shape": 7,
+          "type": "AUDIO",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "VIDEO",
+          "type": "VIDEO",
+          "links": [
+            3
+          ]
+        }
+      ],
+      "title": "create segment video",
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.30.0",
+        "Node name for S&R": "CreateVideo"
+      },
+      "widgets_values": [
+        24,
+        8,
+        "sRGB",
+        "h264"
+      ],
+      "widgets_values_named": {
+        "fps": 24,
+        "bit_depth": 8,
+        "color_space": "sRGB",
+        "codec": "h264"
+      }
+    },
+    {
+      "id": 5,
+      "type": "VAELoader",
+      "pos": [
+        -380,
+        4590
+      ],
+      "size": [
+        470,
+        60
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            4
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "VAELoader",
+        "models": [
+          {
+            "name": "minimax_h3_video_vae_fp16.safetensors",
+            "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_video_vae_fp16.safetensors",
+            "directory": "vae"
+          }
+        ]
+      },
+      "widgets_values": [
+        "minimax_h3_video_vae_int8_convrot_new.safetensors"
+      ],
+      "widgets_values_named": {
+        "vae_name": "minimax_h3_video_vae_int8_convrot_new.safetensors"
+      },
+      "color": "#322",
+      "bgcolor": "#533"
+    },
+    {
+      "id": 8,
+      "type": "VAEDecodeAudio",
+      "pos": [
+        110,
+        5200
+      ],
+      "size": [
+        190,
+        50
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 42
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 5
+        }
+      ],
+      "outputs": [
+        {
+          "name": "AUDIO",
+          "type": "AUDIO",
+          "links": [
+            45
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "VAEDecodeAudio"
+      }
+    },
+    {
+      "id": 6,
+      "type": "VAELoader",
+      "pos": [
+        -390,
+        5200
+      ],
+      "size": [
+        470,
+        60
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            5
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "VAELoader",
+        "models": [
+          {
+            "name": "minimax_h3_audio_vae_fp32.safetensors",
+            "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/main/vae/minimax_h3_audio_vae_fp32.safetensors",
+            "directory": "vae"
+          }
+        ]
+      },
+      "widgets_values": [
+        "minimax_h3_audio_vae_fp32.safetensors"
+      ],
+      "widgets_values_named": {
+        "vae_name": "minimax_h3_audio_vae_fp32.safetensors"
+      },
+      "color": "#322",
+      "bgcolor": "#533"
+    },
+    {
+      "id": 7,
+      "type": "VAEDecode",
+      "pos": [
+        110,
+        4720
+      ],
+      "size": [
+        150,
+        50
+      ],
+      "flags": {
+        "collapsed": false
+      },
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 19
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 4
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            21
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfy-core",
+        "ver": "0.33.0",
+        "Node name for S&R": "VAEDecode"
+      }
+    },
+    {
+      "id": 15,
+      "type": "MiniMaxH3LatentSplit",
+      "pos": [
+        -900,
+        4730
+      ],
+      "size": [
+        220,
+        190
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "latent",
+          "type": "LATENT",
+          "link": 34
+        },
+        {
+          "name": "conditioning",
+          "shape": 7,
+          "type": "CONDITIONING",
+          "link": null
+        }
+      ],
+      "outputs": [
+        {
+          "name": "latents",
+          "type": "LATENT",
+          "links": [
+            11
+          ]
+        },
+        {
+          "name": "cond_batch",
+          "type": "H3_COND_BATCH",
+          "links": [
+            12
+          ]
+        },
+        {
+          "name": "segments_info",
+          "type": "H3_SPLIT_BATCH",
+          "links": [
+            13
+          ]
+        },
+        {
+          "name": "frame_starts",
+          "shape": 6,
+          "type": "INT",
+          "links": [
+            30
+          ]
+        },
+        {
+          "name": "frame_counts",
+          "shape": 6,
+          "type": "INT",
+          "links": []
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "MiniMaxH3LatentSplit"
+      },
+      "widgets_values": [
+        136,
+        0,
+        false
+      ],
+      "widgets_values_named": {
+        "chunk_length": 136,
+        "overlap": 0,
+        "resize_conditioning": false
+      }
+    },
+    {
+      "id": 19,
+      "type": "easy lengthAnything",
+      "pos": [
+        -650,
+        4890
+      ],
+      "size": [
+        140,
+        30
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "any",
+          "type": "*",
+          "link": 30
+        }
+      ],
+      "outputs": [
+        {
+          "name": "length",
+          "type": "INT",
+          "links": [
+            17,
+            46
+          ]
+        }
+      ],
+      "properties": {
+        "cnr_id": "comfyui-easy-use",
+        "ver": "595e0738a9e3f8d0d9c4d875461b2d2c9e7559c7",
+        "Node name for S&R": "easy lengthAnything"
+      }
+    },
+    {
+      "id": 22,
+      "type": "Display Any (rgthree)",
+      "pos": [
+        -640,
+        4580
+      ],
+      "size": [
+        210,
+        90
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "dir": 3,
+          "name": "source",
+          "type": "*",
+          "link": 46
+        }
+      ],
+      "outputs": [],
+      "title": "Count of Segments",
+      "properties": {
+        "cnr_id": "rgthree-comfy",
+        "ver": "738105af5fb14e96fbecaf406dc356e284797e8c",
+        "Node name for S&R": "Display Any (rgthree)"
+      },
+      "widgets_values": [
+        "2"
+      ],
+      "widgets_values_named": {
+        "output": "2"
+      },
+      "color": "#232",
+      "bgcolor": "#353"
+    },
+    {
+      "id": 9,
+      "type": "LoadMiniMaxH3AVLatent",
+      "pos": [
+        -1700,
+        4730
+      ],
+      "size": [
+        250,
+        60
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            33,
+            42
+          ]
+        }
+      ],
+      "properties": {
+        "aux_id": "JerryZRic/comfyui-minimax-h3-latent",
+        "ver": "6a3b27abed5c1ebd452e917789f68cb7d78475a9",
+        "Node name for S&R": "LoadMiniMaxH3AVLatent"
+      },
+      "widgets_values": [
+        "merged_13.h3latent"
+      ],
+      "widgets_values_named": {
+        "latent": "merged_13.h3latent"
+      }
+    },
+    {
+      "id": 29,
+      "type": "Note",
+      "pos": [
+        -1700,
+        4570
+      ],
+      "size": [
+        230,
+        90
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "It's strongly recommended to save and load the H3 latent instead of using it directly from the previous upscaler."
+      ],
+      "widgets_values_named": {
+        "text": "It's strongly recommended to save and load the H3 latent instead of using it directly from the previous upscaler."
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    },
+    {
+      "id": 31,
+      "type": "Note",
+      "pos": [
+        -1700,
+        4390
+      ],
+      "size": [
+        440,
+        130
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [],
+      "properties": {},
+      "widgets_values": [
+        "To use this workflow, you need these nodes:\nhttps://github.com/bbaudio-2025/Comfyui-MiniMax-H3-LatentSplit\nhttps://github.com/bbaudio-2025/ComfyUI-FFmpeg-Video\nhttps://github.com/JerryZRic/comfyui-minimax-h3-latent\nhttps://github.com/yolain/ComfyUI-Easy-Use\nhttps://github.com/rgthree/rgthree-comfy"
+      ],
+      "widgets_values_named": {
+        "text": "To use this workflow, you need these nodes:\nhttps://github.com/bbaudio-2025/Comfyui-MiniMax-H3-LatentSplit\nhttps://github.com/bbaudio-2025/ComfyUI-FFmpeg-Video\nhttps://github.com/JerryZRic/comfyui-minimax-h3-latent\nhttps://github.com/yolain/ComfyUI-Easy-Use\nhttps://github.com/rgthree/rgthree-comfy"
+      },
+      "color": "#432",
+      "bgcolor": "#653"
+    }
+  ],
+  "links": [
+    [
+      2,
+      1,
+      2,
+      4,
+      0,
+      "VIDEO"
+    ],
+    [
+      3,
+      3,
+      0,
+      4,
+      1,
+      "VIDEO"
+    ],
+    [
+      4,
+      5,
+      0,
+      7,
+      1,
+      "VAE"
+    ],
+    [
+      5,
+      6,
+      0,
+      8,
+      1,
+      "VAE"
+    ],
+    [
+      11,
+      15,
+      0,
+      16,
+      0,
+      "LATENT"
+    ],
+    [
+      12,
+      15,
+      1,
+      16,
+      1,
+      "H3_COND_BATCH"
+    ],
+    [
+      13,
+      15,
+      2,
+      16,
+      2,
+      "H3_SPLIT_BATCH"
+    ],
+    [
+      17,
+      19,
+      0,
+      1,
+      1,
+      "INT"
+    ],
+    [
+      18,
+      1,
+      1,
+      16,
+      3,
+      "INT"
+    ],
+    [
+      19,
+      16,
+      0,
+      7,
+      0,
+      "LATENT"
+    ],
+    [
+      21,
+      7,
+      0,
+      3,
+      0,
+      "IMAGE"
+    ],
+    [
+      24,
+      1,
+      0,
+      20,
+      0,
+      "FLOW_CONTROL"
+    ],
+    [
+      25,
+      4,
+      0,
+      20,
+      1,
+      "VIDEO"
+    ],
+    [
+      30,
+      15,
+      3,
+      19,
+      0,
+      "INT"
+    ],
+    [
+      32,
+      24,
+      0,
+      23,
+      0,
+      "IMAGE"
+    ],
+    [
+      33,
+      9,
+      0,
+      25,
+      0,
+      "LATENT"
+    ],
+    [
+      34,
+      25,
+      0,
+      15,
+      0,
+      "LATENT"
+    ],
+    [
+      35,
+      25,
+      4,
+      26,
+      0,
+      "INT"
+    ],
+    [
+      36,
+      26,
+      1,
+      24,
+      1,
+      "INT"
+    ],
+    [
+      37,
+      25,
+      5,
+      27,
+      0,
+      "INT"
+    ],
+    [
+      38,
+      27,
+      1,
+      24,
+      0,
+      "INT"
+    ],
+    [
+      39,
+      23,
+      0,
+      1,
+      0,
+      "VIDEO"
+    ],
+    [
+      42,
+      9,
+      0,
+      8,
+      0,
+      "LATENT"
+    ],
+    [
+      43,
+      20,
+      0,
+      30,
+      0,
+      "VIDEO"
+    ],
+    [
+      44,
+      30,
+      0,
+      21,
+      0,
+      "VIDEO"
+    ],
+    [
+      45,
+      8,
+      0,
+      30,
+      1,
+      "AUDIO"
+    ],
+    [
+      46,
+      19,
+      0,
+      22,
+      0,
+      "INT"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 2.8966437973674264,
+      "offset": [
+        1777.225005213363,
+        -4269.092780034018
+      ]
+    },
+    "frontendVersion": "1.52.7",
+    "VHS_latentpreview": true,
+    "VHS_latentpreviewrate": 0,
+    "VHS_MetadataImage": true,
+    "VHS_KeepIntermediate": true
+  },
+  "version": 0.4,
+  "seed_widgets": {}
+}
